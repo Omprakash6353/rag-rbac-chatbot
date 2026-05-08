@@ -6,34 +6,32 @@ class QueryProcessor:
     def __init__(self):
 
         # =====================================
-        # Quarter Normalization Mapping
+        # Quarter Normalization
         # =====================================
 
-        self.quarter_mappings = {
+        self.quarter_mapping = {
 
             "quarter one": "Q1",
             "first quarter": "Q1",
-            "quarter 1": "Q1",
 
             "quarter two": "Q2",
             "second quarter": "Q2",
-            "quarter 2": "Q2",
 
             "quarter three": "Q3",
             "third quarter": "Q3",
-            "quarter 3": "Q3",
 
             "quarter four": "Q4",
-            "fourth quarter": "Q4",
-            "quarter 4": "Q4"
+            "fourth quarter": "Q4"
         }
 
     # =====================================
-    # Query Normalization
+    # Normalize Query
     # =====================================
 
     def normalize_query(
+
         self,
+
         query
     ):
 
@@ -41,37 +39,37 @@ class QueryProcessor:
             query.lower()
         )
 
-        for phrase, replacement in (
-            self.quarter_mappings.items()
+        for phrase, quarter in (
+
+            self.quarter_mapping.items()
         ):
 
             normalized_query = (
+
                 normalized_query.replace(
                     phrase,
-                    replacement
+                    quarter
                 )
             )
 
         return normalized_query
 
     # =====================================
-    # Query Processing
+    # Extract Filters
     # =====================================
 
-    def process_query(
+    def extract_filters(
+
         self,
+
         query
     ):
-
-        # =====================================
-        # Normalize Query
-        # =====================================
 
         normalized_query = (
             self.normalize_query(query)
         )
 
-        filters = {}
+        filters = []
 
         # =====================================
         # Department Detection
@@ -90,9 +88,10 @@ class QueryProcessor:
 
             if department in normalized_query:
 
-                filters["department"] = (
-                    department
-                )
+                filters.append({
+
+                    "department": department
+                })
 
         # =====================================
         # Quarter Detection
@@ -100,7 +99,7 @@ class QueryProcessor:
 
         quarter_match = re.search(
 
-            r"\b(Q[1-4])\b",
+            r"\bQ[1-4]\b",
 
             normalized_query,
 
@@ -109,10 +108,13 @@ class QueryProcessor:
 
         if quarter_match:
 
-            filters["quarter"] = (
-                quarter_match.group(1)
-                .upper()
-            )
+            filters.append({
+
+                "quarter": (
+                    quarter_match.group()
+                    .upper()
+                )
+            })
 
         # =====================================
         # Year Detection
@@ -127,40 +129,26 @@ class QueryProcessor:
 
         if year_match:
 
-            filters["year"] = (
-                year_match.group(1)
-            )
+            filters.append({
+
+                "year": (
+                    year_match.group()
+                )
+            })
 
         # =====================================
-        # Chroma Filter Formatting
+        # Final Filter Construction
         # =====================================
 
-        formatted_filters = None
+        if len(filters) == 0:
+
+            return None
 
         if len(filters) == 1:
 
-            key = list(filters.keys())[0]
-
-            formatted_filters = {
-                key: filters[key]
-            }
-
-        elif len(filters) > 1:
-
-            formatted_filters = {
-
-                "$and": [
-
-                    {key: value}
-
-                    for key, value
-                    in filters.items()
-                ]
-            }
+            return filters[0]
 
         return {
 
-            "query": normalized_query,
-
-            "filters": formatted_filters
+            "$and": filters
         }

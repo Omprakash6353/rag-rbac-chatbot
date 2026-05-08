@@ -2,12 +2,12 @@ from src.retrieval.query_processor import (
     QueryProcessor
 )
 
-from src.retrieval.retriever import (
-    Retriever
+from src.retrieval.hybrid.hybrid_retriever import (
+    HybridRetriever
 )
 
-from src.retrieval.retrieval_validator import (
-    RetrievalValidator
+from src.retrieval.reranker.cross_encoder_reranker import (
+    CrossEncoderReranker
 )
 
 
@@ -20,54 +20,77 @@ class RetrievalPipeline:
         )
 
         self.retriever = (
-            Retriever()
+            HybridRetriever()
         )
 
-        self.validator = (
-            RetrievalValidator()
+        self.reranker = (
+            CrossEncoderReranker()
         )
 
     # =====================================
-    # Unified Search
+    # Search Pipeline
     # =====================================
 
     def search(
+
         self,
+
         query
     ):
 
-        # =========================
+        # =====================================
         # Query Understanding
-        # =========================
-
-        processed_query = (
-            self.query_processor
-            .process_query(query)
-        )
+        # =====================================
 
         filters = (
-            processed_query["filters"]
+
+            self.query_processor
+            .extract_filters(query)
         )
 
-        # =========================
-        # Semantic Retrieval
-        # =========================
+        # =====================================
+        # Hybrid Retrieval
+        # =====================================
 
         retrieval_results = (
-            self.retriever.retrieve(
+
+            self.retriever
+            .retrieve(
+
                 query=query,
+
                 filters=filters
             )
         )
 
-        # =========================
-        # Validation
-        # =========================
+        print(
 
-        validated_results = (
-            self.validator.validate(
-                retrieval_results
+            f"✅ Retrieved "
+
+            f"{len(retrieval_results)} candidates"
+        )
+
+        # =====================================
+        # Reranking
+        # =====================================
+
+        reranked_results = (
+
+            self.reranker
+            .rerank(
+
+                query=query,
+
+                retrieval_results=(
+                    retrieval_results
+                ),
+
+                top_k=5
             )
+        )
+
+        print(
+            "✅ Reranking completed"
         )
 
         return {
@@ -76,5 +99,5 @@ class RetrievalPipeline:
 
             "filters": filters,
 
-            "results": validated_results
+            "results": reranked_results
         }

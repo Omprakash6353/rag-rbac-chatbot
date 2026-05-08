@@ -95,6 +95,8 @@ class Retriever:
                 "content": doc,
 
                 "metadata": metadata,
+                
+                "retriever": "semantic",
 
                 "confidence": confidence
             })
