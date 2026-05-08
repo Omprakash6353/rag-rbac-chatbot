@@ -1,18 +1,111 @@
 import chromadb
-from src.utils.config import CHROMA_PATH, COLLECTION_NAME
+
+from src.config.settings import (
+    VectorDBConfig
+)
 
 
-def get_collection():
-    client = chromadb.PersistentClient(path=CHROMA_PATH)
-    return client.get_or_create_collection(name=COLLECTION_NAME)
+class ChromaVectorStore:
 
+    def __init__(self):
 
-def reset_collection():
-    client = chromadb.PersistentClient(path=CHROMA_PATH)
+        print(
+            "\n🚀 Initializing ChromaDB...\n"
+        )
 
-    try:
-        client.delete_collection(COLLECTION_NAME)
-    except:
-        pass
+        self.client = (
+            chromadb.PersistentClient(
+                path=(
+                    VectorDBConfig
+                    .VECTOR_DB_PATH
+                )
+            )
+        )
 
-    return client.get_or_create_collection(name=COLLECTION_NAME)
+        self.collection = (
+            self.client.get_or_create_collection(
+                name=(
+                    VectorDBConfig
+                    .COLLECTION_NAME
+                )
+            )
+        )
+
+        print(
+            f"✅ Connected to collection: "
+            f"{VectorDBConfig.COLLECTION_NAME}"
+        )
+
+    # =====================================
+    # Add Documents
+    # =====================================
+
+    def add_documents(
+        self,
+        documents,
+        embeddings
+    ):
+
+        ids = [
+
+            doc.metadata["chunk_id"]
+
+            for doc in documents
+        ]
+
+        texts = [
+
+            doc.page_content
+
+            for doc in documents
+        ]
+
+        metadatas = [
+
+            doc.metadata
+
+            for doc in documents
+        ]
+
+        self.collection.add(
+
+            ids=ids,
+
+            documents=texts,
+
+            metadatas=metadatas,
+
+            embeddings=embeddings
+        )
+
+        print(
+            f"✅ Stored "
+            f"{len(documents)} "
+            f"documents in ChromaDB"
+        )
+
+    # =====================================
+    # Similarity Search
+    # =====================================
+
+    def similarity_search(
+        self,
+        query_embedding,
+        top_k=5,
+        filters=None
+    ):
+
+        results = (
+            self.collection.query(
+
+                query_embeddings=[
+                    query_embedding
+                ],
+
+                n_results=top_k,
+
+                where=filters
+            )
+        )
+
+        return results

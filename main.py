@@ -1,4 +1,8 @@
-from src.ingestion.pipeline import run_pipeline
+from src.evaluation.hit_rate_evaluator import (
+    HitRateEvaluator
+)
 
-if __name__ == "__main__":
-    run_pipeline()
+
+evaluator = HitRateEvaluator()
+
+evaluator.evaluate()
