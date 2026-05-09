@@ -1,8 +1,8 @@
-from src.evaluation.hit_rate_evaluator import (
-    HitRateEvaluator
+from src.evaluation.mrr_evaluator import (
+    MRREvaluator
 )
 
 
-evaluator = HitRateEvaluator()
+evaluator = MRREvaluator()
 
 evaluator.evaluate()
