@@ -1,40 +1,85 @@
+from collections import defaultdict
+
+
 class ContextBuilder:
 
-    def build_context(
+    def __init__(
+
         self,
-        retrieval_results,
-        max_context_chars=4000
+
+        max_chunks_per_document=3
     ):
 
-        context_sections = []
+        self.max_chunks_per_document = (
+            max_chunks_per_document
+        )
 
-        used_chunk_ids = set()
+    # =====================================
+    # Build Context
+    # =====================================
 
-        current_size = 0
+    def build_context(
+
+        self,
+
+        retrieval_results
+    ):
+
+        # =====================================
+        # Empty Protection
+        # =====================================
+
+        if len(retrieval_results) == 0:
+
+            return None
+
+        # =====================================
+        # Group By Document
+        # =====================================
+
+        grouped_documents = defaultdict(list)
 
         for result in retrieval_results:
 
-            metadata = result["metadata"]
+            document_id = (
 
-            chunk_id = (
-                metadata["chunk_id"]
+                result["metadata"][
+                    "document_id"
+                ]
             )
 
-            # =========================
-            # Deduplication
-            # =========================
+            grouped_documents[
+                document_id
+            ].append(result)
 
-            if chunk_id in used_chunk_ids:
-                continue
+        # =====================================
+        # Build Structured Context
+        # =====================================
 
-            used_chunk_ids.add(
-                chunk_id
-            )
+        context_blocks = []
 
-            content = result["content"]
+        for document_id, chunks in (
 
-            confidence = (
-                result["confidence"]
+            grouped_documents.items()
+        ):
+
+            # =====================================
+            # Limit Chunks
+            # =====================================
+
+            selected_chunks = chunks[
+                :self.max_chunks_per_document
+            ]
+
+            # =====================================
+            # Metadata
+            # =====================================
+
+            metadata = (
+
+                selected_chunks[0][
+                    "metadata"
+                ]
             )
 
             source = metadata.get(
@@ -42,56 +87,76 @@ class ContextBuilder:
                 "unknown"
             )
 
-            section_title = metadata.get(
-                "header_2",
-                "General Section"
+            department = metadata.get(
+                "department",
+                "unknown"
             )
 
-            # =========================
-            # Structured Context
-            # =========================
+            quarter = metadata.get(
+                "quarter",
+                "unknown"
+            )
 
-            formatted_chunk = f"""
-SOURCE: {source}
+            year = metadata.get(
+                "year",
+                "unknown"
+            )
 
-SECTION: {section_title}
+            # =====================================
+            # Merge Content
+            # =====================================
 
-CONFIDENCE: {confidence}%
+            merged_content = ""
 
-CONTENT:
-{content}
+            for chunk in selected_chunks:
 
-==================================================
+                merged_content += (
+
+                    chunk["content"]
+
+                    + "\n\n"
+                )
+
+            # =====================================
+            # Structured Document Block
+            # =====================================
+
+            document_block = f"""
+<DOCUMENT>
+
+<SOURCE>
+{source}
+</SOURCE>
+
+<METADATA>
+department: {department}
+quarter: {quarter}
+year: {year}
+</METADATA>
+
+<CONTENT>
+{merged_content.strip()}
+</CONTENT>
+
+</DOCUMENT>
 """
 
-            # =========================
-            # Context Limit
-            # =========================
-
-            if (
-                current_size
-                + len(formatted_chunk)
-                > max_context_chars
-            ):
-
-                break
-
-            context_sections.append(
-                formatted_chunk
+            context_blocks.append(
+                document_block
             )
 
-            current_size += len(
-                formatted_chunk
-            )
+        # =====================================
+        # Final Context
+        # =====================================
 
         final_context = "\n".join(
-            context_sections
+            context_blocks
         )
 
         print(
-            f"✅ Context built: "
-            f"{len(context_sections)} "
-            f"chunks included"
+            f"✅ Context built with "
+            f"{len(context_blocks)} "
+            f"merged documents"
         )
 
         return final_context
